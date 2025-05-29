@@ -1,37 +1,51 @@
-"""Configuration settings for the F1 Prediction Engine."""
-import os
+"""
+Settings for the F1 data pipeline
+"""
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+import os
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-RAW_DATA_DIR = DATA_DIR / "raw"
-PROCESSED_DATA_DIR = DATA_DIR / "processed"
+CACHE_DIR = os.environ.get('CACHE_DIR', BASE_DIR / 'cache')
+LOG_DIR = os.environ.get('LOG_DIR', BASE_DIR / 'logs')
+DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR / 'data')
 
-# Ensure directories exist
-RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+# Create directories if they don't exist
+Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
-# Database configuration
+# API Settings
+OPENF1_BASE_URL = "https://api.openf1.org/v1"
+
+# Rate limiting settings
+BACKOFF_TIME = 3600  # Default backoff time in seconds when rate limit is exceeded
+
+# Database settings
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "port": int(os.getenv("DB_PORT", 5432)),
-    "database": os.getenv("DB_NAME", "f1_prediction_db"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", ""),
+    'engine': os.environ.get('DB_ENGINE', 'postgresql'),
+    'username': os.environ.get('DB_USERNAME', 'f1user'),
+    'password': os.environ.get('DB_PASSWORD', 'f1password'),
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': os.environ.get('DB_PORT', '5432'),
+    'database': os.environ.get('DB_NAME', 'f1data'),
 }
 
-# Ergast API settings
-ERGAST_API_BASE_URL = "http://ergast.com/api/f1"
+# Data collection settings
+DEFAULT_YEARS = range(2017, 2025)
+DEFAULT_SESSIONS = ['FP1', 'FP2', 'FP3', 'Q', 'R']
 
-# FastF1 cache directory
-FAST_F1_CACHE_DIR = RAW_DATA_DIR / "fastf1_cache"
-FAST_F1_CACHE_DIR.mkdir(exist_ok=True)
+# Reconciliation settings
+RECONCILIATION_PRIORITY = {
+    'live_timing': 'openf1',  # OpenF1 is better for live timing data
+    'telemetry': 'fastf1',    # FastF1 is better for detailed telemetry
+    'default': 'fastf1'       # Default to FastF1 for anything else
+}
 
-# F1 seasons to collect data for 
-START_SEASON = 2000
-END_SEASON = 2024
+# Airflow settings
+AIRFLOW_HOME = os.environ.get('AIRFLOW_HOME', BASE_DIR / 'airflow')
+AIRFLOW_DAG_FOLDER = os.path.join(AIRFLOW_HOME, 'dags')
+
+# Schedule settings
+HISTORICAL_SCHEDULE = "0 0 * * *"  # Daily at midnight
+LIVE_DATA_SCHEDULE = "*/5 * * * *"  # Every 5 minutes during race weekends
